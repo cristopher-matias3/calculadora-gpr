@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#3b2a20">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="GPR aéreo">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Calculadora GPR aéreo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: field instrument, clinical and quick to read on site
+   IDEA: a survey cross-section from a radargram report: air above, soil below, the radar cone between
+   PICTURE: live section drawn to scale: drone, footprint cone R1→R2, dead zones, target; Snell ray for tilt
+   COLOUR and TYPE: white ground, soil umber band, signal orange accent, water teal; Barlow Condensed + Barlow
+   LAYOUT: soil-band header with tabs; per tab inputs column beside picture + big readout; stacks on phones */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#141210);--ink:light-dark(#1d1a17,#f1ece6);--mut:light-dark(#6b625a,#a59a8f);--line:light-dark(#e6e0da,#2e2925);--panel:light-dark(#f7f5f2,#1c1916);--soil:light-dark(#3b2a20,#2a1d16);--soilf:light-dark(#9a6a47,#7a5236);--sky:light-dark(#eaf2f6,#1a2229);--sig:#ff6a13;--wat:light-dark(#1b8a9a,#3fb6c6);--ok:light-dark(#237a3b,#5fc77a);--bad:light-dark(#c0391b,#ff7a5c)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Barlow,system-ui,sans-serif;overflow-x:clip}
+h1,h2,.big{font-family:"Barlow Condensed",Barlow,sans-serif;font-weight:700;line-height:1.05;text-wrap:balance}
+header{background:var(--soil);color:#f6efe8;padding:calc(clamp(22px,3vw,40px) + env(safe-area-inset-top)) max(5vw,16px,env(safe-area-inset-right)) 0 max(5vw,16px,env(safe-area-inset-left))}
+main{padding-bottom:calc(40px + env(safe-area-inset-bottom))}
+h1{font-size:clamp(32px,5vw,48px);margin:0 0 4px}
+header p{margin:0 0 18px;color:#d8c8ba;max-width:70ch}
+nav{display:flex;flex-wrap:wrap;gap:4px}
+nav a{color:#e9dccf;text-decoration:none;padding:12px 16px;border-radius:8px 8px 0 0;font-weight:600;min-height:44px}
+nav a[aria-current]{background:var(--bg);color:var(--ink)}
+nav a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--sig);outline-offset:2px}
+main{max-width:1240px;margin:0 auto;padding:clamp(20px,3vw,40px) max(5vw,16px)}
+section[hidden]{display:none}
+.grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:clamp(20px,3vw,40px);align-items:start}
+.ctl{display:grid;gap:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+label{display:grid;gap:4px;font-weight:500;font-size:15px}
+label small{color:var(--mut);font-weight:400;font-size:13px}
+input,select{font:inherit;font-size:16px;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);width:100%}
+button{font:inherit;font-weight:600;min-height:44px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.fig{position:relative;min-height:360px;border-radius:12px;overflow:hidden;border:1px solid var(--line)}
+.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+.read{display:flex;flex-wrap:wrap;gap:12px 32px;margin:18px 0 8px}
+.read div{display:grid}
+.big{font-size:clamp(36px,6vw,52px);color:var(--ink)}
+.big u{text-decoration:none;font-size:.5em;color:var(--mut);margin-left:4px}
+.read span{color:var(--mut);font-size:14px}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+td.n,th.n{text-align:right;white-space:nowrap}
+th{font-size:14px;color:var(--mut);font-weight:600}
+tr.h td{font-weight:600;color:var(--mut);font-size:14px;padding-top:18px;border-bottom:2px solid var(--line)}
+.note{color:var(--mut);font-size:14px;margin:10px 0 0}
+.meter{height:18px;border-radius:9px;background:var(--line);position:relative;margin:14px 0 6px}
+.meter i{position:absolute;inset:0 auto 0 0;border-radius:9px;background:var(--sig);transition:width .3s}
+.meter b{position:absolute;top:-6px;bottom:-6px;width:2px;background:var(--ink)}
+.tag{display:inline-block;padding:4px 10px;border-radius:999px;font-weight:600;font-size:14px}
+.scroll{overflow-x:auto}
+@media(max-width:800px){.grid{grid-template-columns:minmax(0,1fr)}.pic{order:-1}}
+@media(max-width:600px){table{font-size:13px}.fig{min-height:300px}}
+@media(prefers-reduced-motion:reduce){.meter i{transition:none}}
+</style>
+</head>
+<body>
+<header>
+<h1>Calculadora GPR aéreo</h1>
+<p>Huella, tiempo doble (TWT), resolución, contraste dieléctrico y desplazamiento por inclinación del dron. Basada en la planilla de SPH Engineering (UgCS), versión corregida.</p>
+<nav id="tabs">
+<a href="#huella">Huella y TWT</a>
+<a href="#contraste">Contraste dieléctrico</a>
+<a href="#inclinacion">Inclinación</a>
+<a href="#rdp">Tabla RDP</a>
+</nav>
+</header>
+<main>
+
+<section id="s-huella">
+<div class="grid">
+<form class="ctl" id="f1" onsubmit="return false">
+<label>Altura del dron sobre la superficie, m<input id="alt" type="number" step="0.1" min="0" value="1"></label>
+<label>Profundidad estimada del objetivo, m<input id="dep" type="number" step="0.1" min="0" value="3"></label>
+<label>Sistema GPR<select id="gpr"></select></label>
+<label>Material / suelo<select id="mat"></select></label>
+<label>RDP personalizado <small>Opcional; reemplaza el RDP del material</small><input id="rdpc" type="number" step="0.1" min="1" placeholder="—"></label>
+<label>Zona muerta medida en terreno, ns <small>Opcional; reemplaza la del equipo</small><input id="dzm" type="number" step="0.1" min="0" placeholder="—"></label>
+<button type="button" id="r1">Restablecer valores</button>
+</form>
+<div class="pic">
+<div class="fig"><svg id="sec" role="img" aria-label="Corte esquemático de la huella del radar"></svg></div>
+<div class="read" id="k1"></div>
+<div class="scroll"><table id="t1"></table></div>
+</div>
+</div>
+</section>
+
+<section id="s-contraste" hidden>
+<div class="grid">
+<form class="ctl" onsubmit="return false">
+<label>Material del objetivo<select id="ct"></select></label>
+<label>Material huésped (que lo rodea)<select id="ch"></select></label>
+<p class="note">R = |√RDP<sub>obj</sub> − √RDP<sub>hués</sub>| / (√RDP<sub>obj</sub> + √RDP<sub>hués</sub>). Para ver claramente un objetivo, R debería superar 0,1 (10 %).</p>
+</form>
+<div class="pic">
+<div class="read" id="k2"></div>
+<div class="meter" id="m2"><i></i><b style="left:10%"></b></div>
+<p class="note">La línea marca el umbral de 10 %. Escala de 0 a 100 %.</p>
+<table id="t2"></table>
+</div>
+</div>
+</section>
+
+<section id="s-inclinacion" hidden>
+<div class="grid">
+<form class="ctl" onsubmit="return false">
+<label>Ángulo de roll/pitch del dron, °<input id="ang" type="number" step="0.5" min="0" max="89" value="10"></label>
+<label>Distancia dron–objetivo, m <small>Para el cálculo en línea recta</small><input id="dist" type="number" step="0.1" min="0" value="5"></label>
+<label>Altura de la antena sobre la superficie, m<input id="ha" type="number" step="0.1" min="0" value="0.7"></label>
+<label>Profundidad del objetivo bajo la superficie, m<input id="hd" type="number" step="0.1" min="0" value="6"></label>
+<label>Material bajo la superficie<select id="sm"></select></label>
+</form>
+<div class="pic">
+<div class="fig"><svg id="ray" role="img" aria-label="Trayectoria del rayo con refracción"></svg></div>
+<div class="read" id="k3"></div>
+<table id="t3"></table>
+<p class="note">El cálculo en línea recta supone un rayo sin desvío. En agua el rayo se dobla hacia la vertical, así que para batimetría usa el cálculo con refracción (Snell).</p>
+</div>
+</div>
+</section>
+
+<section id="s-rdp" hidden>
+<label style="max-width:360px">Buscar material<input id="q" type="search" placeholder="Ej.: arena, agua…"></label>
+<div class="scroll" style="margin-top:14px"><table id="t4"></table></div>
+<p class="note">RDP: permitividad dieléctrica relativa. V: velocidad de la onda electromagnética. TWT/m: tiempo doble por metro.</p>
+</section>
+</main>
+
+<script>
+{
+const MAT=[["Aire",1.00059],["Suelo normal promedio",9],["Balasto",3.14],["Basalto (saturado)",8],["Arcilla",40],["Suelo arcilloso (seco)",2],["Suelo arcilloso (saturado)",15],["Hormigón",6],["Suelo cultivado",15],["Vidrio",7],["Granito (seco)",5],["Granito (saturado)",7],["Gyttja / lodo",60],["Hielo",3.14],["Caliza (seca)",7],["Caliza (saturada)",8],["Metal",1e6],["Mica",4],["Aceite",2.4],["Turba",56],["Petróleo (crudo)",2.1],["Polietileno (PE)",5],["Balasto ferroviario",4.6],["Roca (seca)",5],["Arena (seca)",5],["Arena (saturada)",30],["Arenisca (saturada)",6],["Suelo arenoso (seco)",3],["Suelo arenoso (saturado)",19],["Lutitas",15],["Limos",30],["Nieve (ρ ≈ 350 kg/m³)",1.57],["Suelo (seco)",5],["Suelo (congelado)",3.14],["Suelo (rocoso)",7],["Suelo (saturado)",30],["Suelo (muy seco)",3.14],["Suelo (muy húmedo)",23],["Suelo (húmedo)",14],["Till / morrena",11.11],["Vacío",1],["Agua",81],["Agua (fría, ~0 °C)",88]];
+const LF=f=>300/(f/2)*1.5/0.3;
+const GPR=[["Radarteam Cobra Plug-In SE-40",52,LF(52)],["Radarteam Cobra Plug-In SE-70",80,LF(80)],["Radarteam Cobra Plug-In SE-150",124,LF(124)],["Radarteam Drone CBD",500,0],["Radar Systems Zond Aero 500",500,0],["Radar Systems Zond Aero 1000",1000,0],["Radar Systems Zond Aero LF 100 MHz",100,LF(100)],["Radar Systems Zond Aero LF 150 MHz",150,LF(150)],["Radar Systems Zond Aero LF 300 MHz",300,LF(300)],["Radar Systems Zond Aero LF 400 MHz",400,LF(400)]];
+const vel=r=>300/Math.sqrt(r), twtm=r=>2000/vel(r);
+const VA=vel(MAT[0][1]), TA=twtm(MAT[0][1]);
+const $=id=>document.getElementById(id);
+const fmt=(x,d=2)=>Number.isFinite(x)?x.toLocaleString('es-CL',{minimumFractionDigits:d,maximumFractionDigits:d}):'—';
+const num=(id,def)=>{const v=parseFloat($(id).value);return Number.isFinite(v)?v:def};
+const opt=(arr,lab)=>arr.map((a,i)=>`<option value="${i}">${lab(a)}</option>`).join('');
+const matLab=a=>`${a[0]} — RDP ${fmt(a[1],a[1]%1?2:0)}`;
+for(const id of['mat','ct','ch','sm'])$(id).innerHTML=opt(MAT,matLab);
+$('gpr').innerHTML=opt(GPR,a=>`${a[0]} (${a[1]} MHz)`);
+const DEF={alt:'1',dep:'3',gpr:'6',mat:'41',rdpc:'',dzm:'',ct:'38',ch:'24',ang:'10',dist:'5',ha:'0.7',hd:'6',sm:'41'};
+const IDS=Object.keys(DEF);
+let saved={};try{saved=JSON.parse(localStorage.getItem('gprcalc')||'{}')}catch(e){}
+for(const k of IDS)$(k).value=saved[k]??DEF[k];
+const save=()=>{try{localStorage.setItem('gprcalc',JSON.stringify(Object.fromEntries(IDS.map(k=>[k,$(k).value]))))}catch(e){}};
+const rows=r=>r.map(x=>x.length===1?`<tr class="h"><td colspan="2">${x[0]}</td></tr>`:`<tr><td>${x[0]}</td><td class="n">${x[1]}</td></tr>`).join('');
+const kpi=a=>a.map(([v,u,l,c])=>`<div><b class="big"${c?` style="color:${c}"`:''}>${v}<u>${u}</u></b><span>${l}</span></div>`).join('');
+
+let H={};
+function calc1(){
+ const h=Math.max(0,num('alt',0)), d=Math.max(0,num('dep',0)), g=GPR[+$('gpr').value], m=MAT[+$('mat').value];
+ const rc=num('rdpc',NaN), rdp=rc>=1?rc:m[1], dzm=num('dzm',NaN);
+ const f=g[1], DZ=dzm>0?dzm:g[2];
+ const lA=VA/f, R1=lA/4+Math.sqrt(h*lA)/2, tA=TA*h, dzA=DZ*VA/2/1000;
+ const vM=vel(rdp), lG=vM/f, R2=Math.sqrt(d*lG)/2+R1, tM=twtm(rdp)*d;
+ const vr=lG/2, ms=Math.max((d+h)/10,lG/2), md=lG*0.4, dzS=DZ>tA?(DZ-tA)*vM/2/1000:0, tT=tA+tM;
+ H={h,d,R1,R2,dzA,dzS,ms,name:rc>=1?`RDP ${fmt(rdp,1)}`:m[0]};
+ $('k1').innerHTML=kpi([[fmt(R2),'m','Huella R2 a la profundidad del objetivo'],[fmt(tT,1),'ns','TWT total'],[fmt(dzA),'m','Zona muerta en el aire',dzA>0?'var(--bad)':''],[fmt(dzS),'m','Zona muerta bajo la superficie',dzS>0?'var(--bad)':'']]);
+ $('t1').innerHTML=rows([['Equipo'],['Frecuencia central f',`${f} MHz`],['Zona muerta del radar',`${fmt(DZ,1)} ns${dzm>0?' (medida)':''}`],['RDP del material',fmt(rdp,2)],
+ ['Dron → superficie'],['Velocidad de onda en aire',`${fmt(VA,1)} mm/ns`],['Longitud de onda λ en aire',`${fmt(lA,3)} m`],['Huella en superficie R1',`${fmt(R1)} m`],['TWT en el aire',`${fmt(tA,2)} ns`],['Zona muerta en el aire',`${fmt(dzA)} m`],
+ ['Superficie → objetivo'],['Velocidad de onda en el medio',`${fmt(vM,1)} mm/ns`],['Longitud de onda λ en el medio',`${fmt(lG,3)} m`],['Huella a la profundidad R2',`${fmt(R2)} m`],['TWT en el material',`${fmt(tM,1)} ns`],['Resolución vertical (λ/2)',`${fmt(vr,3)} m`],['Tamaño mínimo detectable',`${fmt(ms,3)} m`],['Diámetro mínimo de objeto lineal',`${fmt(md,3)} m`],['Zona muerta bajo la superficie',`${fmt(dzS)} m`],['TWT total',`${fmt(tT,1)} ns`]]);
+ draw1();
+}
+const sec=$('sec');
+function draw1(){
+ const W=sec.clientWidth,Hh=sec.clientHeight;if(!W||!Hh)return;
+ const {h,d,R1,R2,dzA,dzS,ms,name}=H, top=46, bot=30, span=Math.max(h+d,0.01);
+ const s=Math.min((Hh-top-bot)/span,(W*0.62)/(2*Math.max(R2,0.01)));
+ const cx=W/2, yD=top, yS=top+h*s, yT=yS+d*s, narrow=W<520;
+ const r=Math.max(3,ms/2*s), X=v=>cx+v*s;
+ const t=(x,y,str,a='middle',c='var(--ink)')=>`<text x="${x}" y="${y}" text-anchor="${a}" fill="${c}" font-size="${narrow?12:13}" font-family="Barlow">${str}</text>`;
+ let o=`<rect width="${W}" height="${yS}" fill="var(--sky)"/><rect y="${yS}" width="${W}" height="${Hh-yS}" fill="var(--soilf)" opacity=".85"/>`;
+ if(dzS>0)o+=`<rect y="${yS}" width="${W}" height="${Math.min(dzS*s,Hh-yS)}" fill="var(--bad)" opacity=".25"/>`;
+ const yA=Math.min(yD+dzA*s,yS);
+ if(dzA>0&&yA>yD)o+=`<rect y="${yD}" width="${W}" height="${yA-yD}" fill="var(--bad)" opacity=".18"/><line x1="0" x2="${W}" y1="${yA}" y2="${yA}" stroke="var(--bad)" stroke-dasharray="6 4" stroke-width="1.5"/>`;
+ o+=`<polygon points="${cx},${yD} ${X(R1)},${yS} ${X(R2)},${yT} ${X(-R2)},${yT} ${X(-R1)},${yS}" fill="var(--sig)" opacity=".28" stroke="var(--sig)" stroke-width="2"/>`;
+ o+=`<line x1="0" x2="${W}" y1="${yS}" y2="${yS}" stroke="var(--ink)" stroke-width="1.5"/>`;
+ o+=`<line x1="${X(-R2)}" x2="${X(R2)}" y1="${yT}" y2="${yT}" stroke="var(--sig)" stroke-width="3"/>`;
+ o+=`<circle cx="${cx}" cy="${yT}" r="${Math.min(r,40)}" fill="var(--ink)" opacity=".85"/>`;
+ o+=`<g transform="translate(${cx},${yD})"><rect x="-22" y="-14" width="44" height="10" rx="3" fill="var(--ink)"/><rect x="-36" y="-20" width="20" height="4" rx="2" fill="var(--ink)"/><rect x="16" y="-20" width="20" height="4" rx="2" fill="var(--ink)"/><rect x="-10" y="-4" width="20" height="6" rx="1" fill="var(--sig)"/></g>`;
+ const lx=narrow?14:W*0.08;
+ o+=`<line x1="${lx}" x2="${lx}" y1="${yD}" y2="${yS}" stroke="var(--mut)"/><line x1="${lx}" x2="${lx}" y1="${yS}" y2="${yT}" stroke="#f6efe8"/>`;
+ o+=t(lx+6,(yD+yS)/2+4,`${fmt(h,1)} m`,'start','var(--mut)')+t(lx+6,(yS+yT)/2+4,`${fmt(d,1)} m`,'start','#f6efe8');
+ o+=t(Math.min(X(R1)+8,W-8),yS-8,`R1 ${fmt(R1)} m`,X(R1)+90>W?'end':'start');
+ o+=t(cx,Math.min(yT+20,Hh-8),`R2 ${fmt(R2)} m`,'middle','#f6efe8');
+ o+=t(W-10,yS+18,name,'end','#f6efe8');
+ if(dzS>0)o+=t(W-10,yS+(narrow?34:36),`zona muerta bajo sup. ${fmt(dzS)} m`,'end','#f6efe8');
+ if(dzA>0)o+=t(W-10,Math.max(yD+16,Math.min(yA-6,yS-24)),`zona muerta en aire ${fmt(dzA)} m${dzA>H.h?' (sobrepasa la superficie)':''}`,'end','var(--bad)');
+ o+=t(W-10,20,'Corte a escala','end','var(--mut)');
+ sec.innerHTML=o;
+}
+const ro1=new ResizeObserver(draw1);ro1.observe(sec);
+
+function calc2(){
+ const a=MAT[+$('ct').value],b=MAT[+$('ch').value],sa=Math.sqrt(a[1]),sb=Math.sqrt(b[1]),R=Math.abs(sa-sb)/(sa+sb),ok=R>=0.1;
+ $('k2').innerHTML=kpi([[fmt(R*100,1),'%','Contraste dieléctrico R',ok?'var(--ok)':'var(--bad)']])+`<div style="align-self:center"><span class="tag" style="background:${ok?'var(--ok)':'var(--bad)'};color:#fff">${ok?'Reflexión suficiente':'Reflexión débil (bajo 10 %)'}</span></div>`;
+ $('m2').querySelector('i').style.width=Math.min(100,R*100)+'%';
+ $('t2').innerHTML=rows([['RDP del objetivo ('+a[0]+')',fmt(a[1],2)],['RDP del huésped ('+b[0]+')',fmt(b[1],2)],['Contraste R',fmt(R,3)]]);
+}
+
+let G={};
+function calc3(){
+ const th=Math.min(89,Math.max(0,num('ang',0))),D=Math.max(0,num('dist',0)),h=Math.max(0,num('ha',0)),d=Math.max(0,num('hd',0)),m=MAT[+$('sm').value];
+ const rad=th*Math.PI/180, sh=D*Math.tan(rad), tr=Math.asin(Math.sin(rad)/Math.sqrt(m[1])), sA=h*Math.tan(rad), sM=d*Math.tan(tr), tot=sA+sM, str=(h+d)*Math.tan(rad);
+ G={h,d,sA,sM,str,th,trd:tr*180/Math.PI,name:m[0]};
+ $('k3').innerHTML=kpi([[fmt(tot),'m','Desplazamiento total con refracción'],[fmt(sh),'m','En línea recta (dron–objetivo '+fmt(D,1)+' m)']]);
+ $('t3').innerHTML=rows([['Línea recta'],['Desplazamiento desde el nadir',`${fmt(sh)} m`],['Con refracción (Snell)'],['RDP del material',fmt(m[1],2)],['Ángulo refractado en el material',`${fmt(G.trd,2)}°`],['Desplazamiento en el aire',`${fmt(sA,3)} m`],['Desplazamiento en el material',`${fmt(sM,3)} m`],['Desplazamiento total desde el nadir',`${fmt(tot,3)} m`],['Sin refracción (mismas alturas)',`${fmt(str,3)} m`]]);
+ draw3();
+}
+const ray=$('ray');
+function draw3(){
+ const W=ray.clientWidth,Hh=ray.clientHeight;if(!W||!Hh)return;
+ const {h,d,sA,sM,str,th,trd,name}=G,top=40,bot=34,span=Math.max(h+d,0.01),wide=Math.max(str,sA+sM,0.01);
+ const s=Math.min((Hh-top-bot)/span,(W*0.7)/wide), x0=W*0.15, yD=top, yS=top+h*s, yT=yS+d*s, narrow=W<520;
+ const t=(x,y,str,a='start',c='var(--ink)')=>`<text x="${x}" y="${y}" text-anchor="${a}" fill="${c}" font-size="${narrow?12:13}" font-family="Barlow">${str}</text>`;
+ let o=`<rect width="${W}" height="${yS}" fill="var(--sky)"/><rect y="${yS}" width="${W}" height="${Hh-yS}" fill="var(--wat)" opacity=".55"/>`;
+ o+=`<line x1="0" x2="${W}" y1="${yS}" y2="${yS}" stroke="var(--ink)" stroke-width="1.5"/>`;
+ o+=`<line x1="${x0}" x2="${x0}" y1="${yD}" y2="${Hh}" stroke="var(--mut)" stroke-dasharray="4 4"/>`;
+ o+=`<line x1="${x0}" y1="${yD}" x2="${x0+str*s}" y2="${yT}" stroke="var(--ink)" stroke-dasharray="6 5" opacity=".6"/>`;
+ o+=`<polyline points="${x0},${yD} ${x0+sA*s},${yS} ${x0+(sA+sM)*s},${yT}" fill="none" stroke="var(--sig)" stroke-width="3"/>`;
+ o+=`<circle cx="${x0+(sA+sM)*s}" cy="${yT}" r="6" fill="var(--sig)"/><circle cx="${x0+str*s}" cy="${yT}" r="5" fill="none" stroke="var(--ink)" stroke-width="2"/>`;
+ o+=`<g transform="translate(${x0},${yD})"><rect x="-18" y="-12" width="36" height="9" rx="3" fill="var(--ink)"/><rect x="-6" y="-3" width="12" height="5" fill="var(--sig)"/></g>`;
+ o+=t(x0-6,yS-6,`${fmt(th,1)}°`,'end','var(--mut)')+t(x0+sA*s+8,yS+18,`${fmt(trd,1)}° refractado`,'start','#fff');
+ o+=t(W-10,20,'Corte a escala · nadir punteado','end','var(--mut)')+t(W-10,Hh-12,name,'end','#fff');
+ o+=t(10,Hh-12,'— con refracción  ‐‐ línea recta','start','#fff');
+ ray.innerHTML=o;
+}
+const ro3=new ResizeObserver(draw3);ro3.observe(ray);
+
+function rdpTable(){
+ const q=$('q').value.trim().toLowerCase();
+ const r=MAT.filter(m=>m[0].toLowerCase().includes(q));
+ $('t4').innerHTML=`<tr><th>Material / suelo</th><th class="n">RDP</th><th class="n">V (mm/ns)</th><th class="n">TWT/m (ns/m)</th></tr>`+(r.length?r.map(m=>`<tr><td>${m[0]}</td><td class="n">${fmt(m[1],2)}</td><td class="n">${fmt(vel(m[1]),2)}</td><td class="n">${fmt(twtm(m[1]),2)}</td></tr>`).join(''):`<tr><td colspan="4">Sin resultados para esa búsqueda.</td></tr>`);
+}
+
+const all=()=>{calc1();calc2();calc3();save()};
+for(const k of IDS){$(k).addEventListener('input',all);$(k).addEventListener('change',all)}
+$('q').addEventListener('input',rdpTable);
+$('r1').addEventListener('click',()=>{for(const k of['alt','dep','gpr','mat','rdpc','dzm'])$(k).value=DEF[k];all()});
+const TABS=['huella','contraste','inclinacion','rdp'];
+function route(){
+ const h=location.hash.slice(1), cur=TABS.includes(h)?h:'huella';
+ for(const t of TABS)$('s-'+t).hidden=t!==cur;
+ for(const a of document.querySelectorAll('#tabs a'))a.toggleAttribute('aria-current',a.getAttribute('href')==='#'+cur);
+ draw1();draw3();
+}
+addEventListener('hashchange',route);
+all();rdpTable();route();
+if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+}
+</script>
+</body>
+</html>
